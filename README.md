@@ -34,7 +34,6 @@ Warehouse simulator
     updates robot movement, deliveries, rewards, and collisions
 ```
 
-The final version also estimates path-overlap congestion risk using A*. This helps the scheduler avoid assignments that are likely to send robots through crowded routes.
 
 ## How to Run
 
@@ -92,7 +91,7 @@ outputs/collision_comparison.png          Collision/congestion comparison chart
 outputs/congestion_risk_comparison.png    Path-overlap risk comparison chart
 ```
 
-MP4 export may be skipped if FFmpeg is not installed. The GIF, CSV, and PNG outputs are still generated normally.
+
 
 ## Results
 
@@ -115,6 +114,3 @@ The main finding is that HRL became useful when the scheduler received congestio
 
 This suggests that high-level learning is more effective when the environment provides meaningful decision features instead of relying only on delayed collision penalties.
 
-## Notes
-
-This is a simplified grid-world simulator, not a physics-based warehouse model. Collision/congestion events represent blocked or conflicting robot movements. The current results are based on one warehouse configuration, so further testing on larger and randomized layouts would be needed before making general claims.
