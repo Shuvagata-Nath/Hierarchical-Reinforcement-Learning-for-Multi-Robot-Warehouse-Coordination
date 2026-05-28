@@ -14,10 +14,24 @@ astar.py                   A* path planner for robot navigation
 train_hrl_scheduler.py     PPO training script for the HRL scheduler
 evaluate.py                Evaluation script for baselines and HRL
 demo_heuristic.py          Greedy rollout demo
-visualize.py               GIF/MP4 visualization utilities
 requirements.txt           Required Python packages
-outputs/                   Generated model, charts, GIFs, and CSV files
+outputs/                   Generated model, charts and CSV files
 ```
+
+## Environment Setup
+
+The final experiments were run in the following warehouse configuration:
+
+```text
+Grid size:          14 x 10
+Number of robots:  3
+Maximum orders:    5
+Maximum steps:     300 per episode
+Observation shape: 52
+Action space:      Discrete(16)
+```
+
+Each HRL action represents a high-level robot-order assignment or a no-op action. A* is used for low-level path planning after an assignment is made.
 
 ## How It Works
 
@@ -33,7 +47,6 @@ A* path planner
 Warehouse simulator
     updates robot movement, deliveries, rewards, and collisions
 ```
-
 
 ## How to Run
 
@@ -53,7 +66,7 @@ pip install -r requirements.txt
 Train the HRL scheduler:
 
 ```bash
-py train_hrl_scheduler.py --timesteps 1000000
+py train_hrl_scheduler.py 
 ```
 
 Evaluate all policies:
@@ -62,55 +75,28 @@ Evaluate all policies:
 py evaluate.py
 ```
 
-Run only the greedy visual demo:
-
-```bash
-py demo_heuristic.py
-```
-
-To retrain from scratch:
-
-```bash
-rmdir /s /q outputs
-py train_hrl_scheduler.py --timesteps 1000000
-py evaluate.py
-```
-
-## Outputs
-
-The evaluation script generates the following files:
-
-```text
-outputs/hrl_warehouse_scheduler.zip       Trained HRL model
-outputs/hrl_policy_demo.gif               HRL rollout visualization
-outputs/evaluation_summary_results.csv    Summary results for each policy
-outputs/evaluation_episode_results.csv    Episode-level results
-outputs/reward_comparison.png             Reward comparison chart
-outputs/delivered_comparison.png          Delivery comparison chart
-outputs/collision_comparison.png          Collision/congestion comparison chart
-outputs/congestion_risk_comparison.png    Path-overlap risk comparison chart
-```
-
-
 
 ## Results
 
-The final congestion-aware HRL run produced the following result:
+The final comparison across the main tested variants is shown below.
 
-| Policy | Average Reward | Average Deliveries | Average Collision/Congestion Events |
-|---|---:|---:|---:|
-| Greedy | 23.34 | 2.0 | 832.0 |
-| Congestion Greedy | 48.11 | 2.4 | 822.7 |
-| Random | -424.24 | 3.6 | 778.8 |
-| Congestion-Aware HRL | 246.04 | 5.9 | 746.1 |
+| Policy | Average Reward | Average Deliveries | Average Collision/Congestion Events | Model Description|
+|---|---:|---:|---:|---|
+| Greedy | 27.37 | 2.0 | 832.0 | Nearest-task rule baseline |
+| HRL-Base | 160.29 | 4.3 | 769.6 | PPO HRL without congestion reward |
+| HRL-Congestion | 246.04 | 5.9 | 746.1 | PPO HRL with A*-based path-overlap penalty |
+| HRL-Actor-BC | **303.25** | **6.7** | 743.2 | A*-guided actor pretraining followed by PPO |
+| HRL-Property-Critic | 225.87 | 6.4 | **734.5** | Actor + system-property critic pretraining |
 
-The earlier HRL setup could get close to greedy delivery performance, but collision reduction was limited because the scheduler only received collision penalties after conflicts happened. In the final version, A* is also used to estimate path-overlap risk before assignment. This gave the HRL policy a more useful signal for avoiding crowded routes.
 
-As a result, the congestion-aware HRL scheduler achieved the best overall performance in this experiment. It completed more deliveries than both greedy baselines while also reducing collision/congestion events.
+The earlier HRL setup could get close to greedy delivery performance, but collision reduction was limited because the scheduler only received collision penalties after conflicts happened. In the final congestion-aware version, A* is also used to estimate path-overlap risk before assignment. This gave the HRL policy a more useful signal for avoiding crowded routes.
+
+The best overall result came from **HRL-Actor-BC**, where the actor was first pretrained using an A*-guided expert heuristic and then fine-tuned with PPO. The **HRL-Property-Critic** variant achieved the lowest collision/congestion count, but with lower reward than the actor-pretrained model.
 
 ## Findings
 
 The main finding is that HRL became useful when the scheduler received congestion-aware information. A basic greedy scheduler only selects short-distance assignments, while the HRL policy learned from delivery rewards, collision penalties, and path-overlap risk.
 
-This suggests that high-level learning is more effective when the environment provides meaningful decision features instead of relying only on delayed collision penalties.
+The results also show that pretraining can help, but the type of pretraining matters. A*-guided actor pretraining gave the best overall reward and delivery performance, while property-critic pretraining produced the safest collision result. Reward-aligned critic pretraining improved over the safety-only critic in reward, but did not outperform actor-only pretraining.
 
+This suggests that high-level learning is more effective when the environment provides meaningful decision features instead of relying only on delayed collision penalties.
